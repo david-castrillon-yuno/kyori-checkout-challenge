@@ -239,6 +239,13 @@ export interface PaymentMethodCardProps {
   incompatibleReason?: string;
 }
 
+// PaymentMethodCard high-value warning logic:
+//   if (orderContext.orderValue > method.maxAmount * 0.8 && orderContext.orderValue <= method.maxAmount):
+//     show yellow banner: "Your order is near the maximum limit (MAX_AMOUNT CURRENCY)"
+//   if (orderContext.orderValue > method.maxAmount):
+//     show red banner: "Your order exceeds the maximum limit for this method"
+//     + add to incompatibleReason if applicable
+
 export interface PaymentMethodGridProps {
   results: FilteredMethod[];  // was: methods: PaymentMethod[]
   recommendedIds: Set<string>;

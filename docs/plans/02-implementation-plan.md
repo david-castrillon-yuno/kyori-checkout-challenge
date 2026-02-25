@@ -122,7 +122,7 @@ Key points:
 - InstaPay → `confirmationMinutes: 120`
 - 7-Eleven (PH/TH), Alfamart → `confirmationMinutes: 1440`
 - Card → `markets: ['PH', 'TH', 'ID']`, `currency: 'MULTI'`
-- **11th method: BDO Direct Transfer** — id: `bdo-direct`, market: PH, category: bank-transfer, `confirmationMinutes: 4320` (3 days), successRate: 0.72, requiresBankAccount: true, requiresSmartphone: false, requiresPhysicalVisit: false, popularityRank: 5, currency: 'PHP', maxAmount: 500000, minAmount: 1
+- **11th method: BRI Transfer** — id: `bri-transfer`, market: ID, category: bank-transfer, `confirmationTime: '3day'`, `confirmationMinutes: 4320` (1-3 business days), successRate: 0.82, requiresBankAccount: true, requiresSmartphone: false, requiresPhysicalVisit: false, popularityRank: 4, currency: 'IDR', minAmount: 10000, maxAmount: 500000000, brandColor: '#003087', iconName: 'Building2', tagline: 'Standard bank transfer -- works with any Indonesian bank', expirationWindow: '72 hours', flowDescription: 'Transfer from any Indonesian bank to BRI account. Standard inter-bank transfer processed in batches. Confirmation within 1-3 business days.', prerequisites: ['Indonesian bank account', 'Internet or mobile banking'], limitations: ['1-3 business days confirmation', 'Not suitable for same-day or express delivery', 'Min 10,000 IDR']
 
 ---
 
@@ -441,9 +441,21 @@ Structure (shadcn `Card`):
 
 Expand/collapse: show prerequisites + limitations only when expanded (local `isExpanded` state).
 
-Warning logic: if `orderContext.deliveryType === 'same-day'` and `method.confirmationMinutes > 120` → show amber warning.
+Warning logic (delivery mismatch): if `orderContext.deliveryType === 'same-day'` and `method.confirmationMinutes > 120` → show amber warning.
 
-Compare button: disabled if 3 already selected AND this method is not one of them. Max 3.
+High-value warning logic:
+```
+if (orderContext.orderValue > method.maxAmount * 0.8 && orderContext.orderValue <= method.maxAmount):
+  show yellow banner: "Your order is near the maximum limit (MAX_AMOUNT CURRENCY)"
+
+if (orderContext.orderValue > method.maxAmount):
+  show red banner: "Your order exceeds the maximum limit for this method"
+  + set incompatibleReason = "Order exceeds max limit" (if not already set)
+```
+
+Dimmed state: if `incompatibleReason` is present, the entire card renders at `opacity-50` with a red badge showing the reason. Compare button is hidden for incompatible cards.
+
+Compare button (for compatible cards only): disabled if 3 already selected AND this method is not one of them. Max 3.
 
 Motion: `whileHover={{ scale: 1.01 }}` + shadow transition.
 
