@@ -65,7 +65,7 @@ Prompts:
 
 Then add components:
 ```bash
-npx shadcn@latest add badge button card drawer separator tabs toggle tooltip scroll-area
+npx shadcn@latest add badge button card drawer input separator slider tabs toggle toggle-group tooltip scroll-area
 ```
 
 This creates:
@@ -100,17 +100,21 @@ git commit -m "chore: setup tailwind v4, shadcn/ui, motion"
 
 ## Phase 1: Types + Mock Data (≈ 15 min)
 
+> **TypeScript note:** `tsconfig.app.json` has `verbatimModuleSyntax: true`. ALL type-only imports MUST use `import type { ... }` syntax. Example: `import type { PaymentMethod, FilterState } from '../types'`. Mixing value and type imports: `import { someValue, type SomeType } from './module'`.
+
 ### Task 1.1 — Types (`src/types/index.ts`)
 
 Create file with all types from `01-architecture.md` Section 3.
 
-Key types: `Market`, `PaymentCategory`, `DeliveryType`, `ConfirmationTime`, `SpeedFilter`, `ConvenienceFilter`, `PaymentMethod`, `OrderContext`, `FilterState`, `RecommendedMethod`, `RecommendationResult`, and all component prop interfaces.
+Key types: `Market`, `PaymentCategory`, `DeliveryType`, `ConfirmationTime`, `SpeedFilter`, `ConvenienceFilter`, `Currency`, `PaymentMethod`, `OrderContext`, `FilterState`, `FitStatus`, `FilteredMethod`, `RecommendedMethod`, `RecommendationResult`, and all component prop interfaces.
+
+Add `export type Currency = 'PHP' | 'THB' | 'IDR' | 'MULTI'` and change `currency: string` to `currency: Currency` in the `PaymentMethod` interface.
 
 ---
 
 ### Task 1.2 — Payment Methods (`src/data/paymentMethods.ts`)
 
-Create `PAYMENT_METHODS: PaymentMethod[]` with all 10 methods. Full data in `01-architecture.md` Section 4.
+Create `PAYMENT_METHODS: PaymentMethod[]` with all 11 methods. Full data in `01-architecture.md` Section 4.
 
 Key points:
 - GCash, TrueMoney, GoPay, Card → `confirmationMinutes: 0`
@@ -118,13 +122,14 @@ Key points:
 - InstaPay → `confirmationMinutes: 120`
 - 7-Eleven (PH/TH), Alfamart → `confirmationMinutes: 1440`
 - Card → `markets: ['PH', 'TH', 'ID']`, `currency: 'MULTI'`
+- **11th method: BDO Direct Transfer** — id: `bdo-direct`, market: PH, category: bank-transfer, `confirmationMinutes: 4320` (3 days), successRate: 0.72, requiresBankAccount: true, requiresSmartphone: false, requiresPhysicalVisit: false, popularityRank: 5, currency: 'PHP', maxAmount: 500000, minAmount: 1
 
 ---
 
 ### Task 1.3 — Order Contexts (`src/data/orderContexts.ts`)
 
 ```typescript
-import { OrderContext } from '../types'
+import type { OrderContext } from '../types'
 
 export const DEFAULT_ORDER_CONTEXT: OrderContext = {
   market: 'PH',
@@ -156,7 +161,7 @@ git commit -m "feat: add types, payment method mock data, order context presets"
 
 ```typescript
 import { useMemo } from 'react'
-import { PaymentMethod, FilterState, Market } from '../types'
+import type { PaymentMethod, FilterState, Market, FilteredMethod } from '../types'
 
 const SPEED_TO_MINUTES: Record<string, number> = {
   instant: 0,
@@ -164,52 +169,73 @@ const SPEED_TO_MINUTES: Record<string, number> = {
   'under-24hr': 1440,
 }
 
+function getSpeedReason(minutes: number): string {
+  if (minutes >= 4320) return 'Takes up to 3 days to confirm'
+  if (minutes >= 1440) return 'Takes up to 24 hours to confirm'
+  if (minutes >= 120) return 'Takes up to 2 hours to confirm'
+  return ''
+}
+
 export function usePaymentFilter(
   methods: PaymentMethod[],
   filterState: FilterState,
   market: Market
-): { filtered: PaymentMethod[]; total: number } {
-  const filtered = useMemo(() => {
-    let result = methods
+): { results: FilteredMethod[]; total: number } {
+  const results = useMemo(() => {
+    // Hard filter: only show methods available in selected market
+    const marketMethods = methods.filter(m => m.markets.includes(market))
 
-    // 1. Market (always)
-    result = result.filter(m => m.markets.includes(market))
+    const scored: FilteredMethod[] = marketMethods.map(m => {
+      // Speed check
+      if (filterState.speed !== 'all') {
+        const max = SPEED_TO_MINUTES[filterState.speed]
+        if (m.confirmationMinutes > max) {
+          return { method: m, fitStatus: 'incompatible', fitReason: getSpeedReason(m.confirmationMinutes) }
+        }
+      }
 
-    // 2. Speed
-    if (filterState.speed !== 'all') {
-      const max = SPEED_TO_MINUTES[filterState.speed]
-      result = result.filter(m => m.confirmationMinutes <= max)
-    }
+      // Convenience check
+      if (filterState.convenience === 'no-bank-account' && m.requiresBankAccount) {
+        return { method: m, fitStatus: 'incompatible', fitReason: 'Requires a bank account' }
+      }
+      if (filterState.convenience === 'phone-only' && (!m.requiresSmartphone || m.requiresPhysicalVisit)) {
+        return { method: m, fitStatus: 'incompatible', fitReason: 'Requires physical store visit or no app available' }
+      }
+      if (filterState.convenience === 'cash-preferred' && m.category !== 'cash-otc') {
+        return { method: m, fitStatus: 'incompatible', fitReason: 'Not a cash payment option' }
+      }
 
-    // 3. Convenience
-    if (filterState.convenience === 'no-bank-account') {
-      result = result.filter(m => !m.requiresBankAccount)
-    } else if (filterState.convenience === 'phone-only') {
-      result = result.filter(m => m.requiresSmartphone && !m.requiresPhysicalVisit)
-    } else if (filterState.convenience === 'cash-preferred') {
-      result = result.filter(m => m.category === 'cash-otc')
-    }
+      // Category check
+      if (filterState.categories.length > 0 && !filterState.categories.includes(m.category)) {
+        return { method: m, fitStatus: 'incompatible', fitReason: `Not in selected categories` }
+      }
 
-    // 4. Category
-    if (filterState.categories.length > 0) {
-      result = result.filter(m => filterState.categories.includes(m.category))
-    }
+      return { method: m, fitStatus: 'compatible' }
+    })
 
-    // 5. Search
-    if (filterState.searchQuery.trim()) {
-      const q = filterState.searchQuery.toLowerCase()
-      result = result.filter(m =>
-        m.name.toLowerCase().includes(q) ||
-        m.tagline.toLowerCase().includes(q) ||
-        m.category.toLowerCase().includes(q)
-      )
-    }
+    // Hard filter: search removes entirely (not dimmed)
+    const filtered = filterState.searchQuery.trim()
+      ? scored.filter(({ method: m }) => {
+          const q = filterState.searchQuery.toLowerCase()
+          return (
+            m.name.toLowerCase().includes(q) ||
+            m.tagline.toLowerCase().includes(q) ||
+            m.category.toLowerCase().includes(q)
+          )
+        })
+      : scored
 
-    // 6. Sort by popularity
-    return result.sort((a, b) => a.popularityRank - b.popularityRank)
+    // Sort: compatible first (by popularityRank), then incompatible
+    return filtered.sort((a, b) => {
+      if (a.fitStatus === b.fitStatus) return a.method.popularityRank - b.method.popularityRank
+      return a.fitStatus === 'compatible' ? -1 : 1
+    })
   }, [methods, filterState, market])
 
-  return { filtered, total: methods.filter(m => m.markets.includes(market)).length }
+  return {
+    results,
+    total: methods.filter(m => m.markets.includes(market)).length,
+  }
 }
 ```
 
@@ -219,9 +245,11 @@ export function usePaymentFilter(
 
 Implements scoring algorithm from `01-architecture.md` Section 7.
 
+> **Important:** Called in App.tsx with `PAYMENT_METHODS` (all methods), NOT the filtered results. The hook internally filters by market via `methods.filter(m => m.markets.includes(ctx.market))`.
+
 ```typescript
 import { useMemo } from 'react'
-import { PaymentMethod, OrderContext, RecommendationResult, RecommendedMethod } from '../types'
+import type { PaymentMethod, OrderContext, RecommendationResult, RecommendedMethod } from '../types'
 
 const MARKET_NAMES = { PH: 'the Philippines', TH: 'Thailand', ID: 'Indonesia' }
 const DELIVERY_LABELS = {
@@ -309,6 +337,18 @@ git commit -m "feat: implement usePaymentFilter and useRecommendations hooks"
 
 ## Phase 3: Components (≈ 30 min)
 
+### Task 3.0 — `Header.tsx`
+
+Props: `{ market: Market }`
+
+Layout: sticky top bar, dark background (slate-900).
+- **Left:** shopping cart icon + "Kyori Grocery" brand name.
+- **Center:** "Payment Advisor" subtitle.
+- **Right:** `<CountryFlag market={market} />` showing active market.
+- Height: 56px. Full width.
+
+---
+
 ### Task 3.1 — `BadgeConfirmation.tsx`
 
 Uses shadcn `Badge`. Props: `{ confirmationTime: ConfirmationTime; size?: 'sm' | 'md' }`
@@ -336,7 +376,11 @@ Layout:
 - Top row: market flag buttons (PH / TH / ID) using shadcn `ToggleGroup`
 - Second row: delivery type (`same-day` / `express` / `standard` / `scheduled`) as `ToggleGroup`
 - Third row: preset selector as `Tabs` or quick-select buttons
-- Shows order value + currency for selected market
+- Fourth row: order value slider (shadcn `Slider`) with market-appropriate range:
+  - PH: 100--10,000 PHP
+  - TH: 50--5,000 THB
+  - ID: 10,000--2,000,000 IDR
+  Display formatted value with `formatCurrency(value, market)` next to the slider.
 
 On any change → call `onOrderContextChange({ ...orderContext, [field]: value })`
 
@@ -409,9 +453,13 @@ Motion: `whileHover={{ scale: 1.01 }}` + shadow transition.
 
 Props: `PaymentMethodGridProps` from types.
 
+- Props now accept `results: FilteredMethod[]` instead of `methods: PaymentMethod[]`
 - Wraps cards in `AnimatePresence` (from `"motion/react"`) with `layout` prop for smooth reorder
 - Each card gets `motion.div` with `initial={{ opacity: 0, y: 20 }}` / `animate={{ opacity: 1, y: 0 }}` / `exit={{ opacity: 0, scale: 0.95 }}`
-- Renders `EmptyState` when `methods.length === 0`
+- Compatible methods render at full opacity with normal card styling
+- Incompatible methods render after a `--- Other available methods ---` section divider, at `opacity-50` (dimmed)
+- Each incompatible card shows a small amber label with `fitReason` at the top (e.g., "Takes 24 hours to confirm")
+- Renders `EmptyState` when `results.length === 0`
 - Grid: `grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4`
 
 ---
@@ -432,7 +480,19 @@ Comparison table rows:
 - Expiration window
 - Payment flow (truncated)
 
-Each row: label in left col, one col per selected method. Color-code ✓ / ✗ with green/red.
+Each row: label in left col, one col per selected method. Color-code green/red.
+
+---
+
+### Task 3.9 — `CompareBar.tsx`
+
+Props: `{ selectedCount: number; onOpen: () => void; onClear: () => void }`
+
+Renders: sticky bottom bar (fixed, bottom-0, full width, z-50). Only visible when `selectedCount > 0`.
+
+Content: "Comparing {N} methods" label + "View comparison" button + "Clear" button.
+
+Motion: slides up from bottom with `AnimatePresence`.
 
 **Commit:**
 ```bash
@@ -447,12 +507,12 @@ git commit -m "feat: implement all UI components"
 ### Task 4.1 — Wire Everything in `App.tsx`
 
 ```tsx
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PAYMENT_METHODS } from './data/paymentMethods'
 import { DEFAULT_ORDER_CONTEXT, ORDER_CONTEXT_PRESETS } from './data/orderContexts'
 import { usePaymentFilter } from './hooks/usePaymentFilter'
 import { useRecommendations } from './hooks/useRecommendations'
-import { FilterState, OrderContext } from './types'
+import type { FilterState, OrderContext } from './types'
 // ... component imports
 
 const DEFAULT_FILTER: FilterState = {
@@ -465,26 +525,46 @@ export default function App() {
   const [selectedForComparison, setSelectedForComparison] = useState<string[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
-  const { filtered, total } = usePaymentFilter(PAYMENT_METHODS, filterState, orderContext.market)
-  const recommendations = useRecommendations(filtered, orderContext)
+  // NOTE: usePaymentFilter now returns { results: FilteredMethod[], total }
+  const { results, total } = usePaymentFilter(PAYMENT_METHODS, filterState, orderContext.market)
+  // NOTE: useRecommendations gets ALL methods, not filtered — it filters by market internally
+  const recommendations = useRecommendations(PAYMENT_METHODS, orderContext)
 
-  const recommendedIds = new Set(recommendations.recommendations.map(r => r.method.id))
-  const recommendationReasons = new Map(
-    recommendations.recommendations.map(r => [r.method.id, r.reason])
+  // Derived state — memoized
+  const recommendedIds = useMemo(
+    () => new Set(recommendations.recommendations.map(r => r.method.id)),
+    [recommendations]
+  )
+  const recommendationReasons = useMemo(
+    () => new Map(recommendations.recommendations.map(r => [r.method.id, r.reason])),
+    [recommendations]
   )
 
-  const toggleComparison = (id: string) => {
+  // Clear comparison when market changes
+  useEffect(() => {
+    setSelectedForComparison([])
+    setIsDrawerOpen(false)
+  }, [orderContext.market])
+
+  // Open drawer automatically when first method is selected for comparison
+  useEffect(() => {
+    if (selectedForComparison.length > 0) setIsDrawerOpen(true)
+  }, [selectedForComparison])
+
+  const toggleComparison = useCallback((id: string) => {
     setSelectedForComparison(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 3 ? [...prev, id] : prev
     )
-    if (!isDrawerOpen && selectedForComparison.length >= 1) setIsDrawerOpen(true)
-  }
+  }, [])
 
   const comparisonMethods = PAYMENT_METHODS.filter(m => selectedForComparison.includes(m.id))
 
+  // Count compatible methods for display
+  const compatibleCount = results.filter(r => r.fitStatus === 'compatible').length
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+      <Header market={orderContext.market} />
       <OrderContextPanel
         orderContext={orderContext}
         onOrderContextChange={setOrderContext}
@@ -497,7 +577,7 @@ export default function App() {
             filterState={filterState}
             onFilterChange={setFilterState}
             totalCount={total}
-            filteredCount={filtered.length}
+            filteredCount={compatibleCount}
           />
         </aside>
         {/* Main */}
@@ -506,10 +586,10 @@ export default function App() {
             <RecommendationBanner result={recommendations} />
           )}
           <p className="text-sm text-slate-500 mb-4">
-            Showing {filtered.length} of {total} payment methods
+            Showing {compatibleCount} of {total} payment methods
           </p>
           <PaymentMethodGrid
-            methods={filtered}
+            results={results}
             recommendedIds={recommendedIds}
             recommendationReasons={recommendationReasons}
             selectedForComparison={selectedForComparison}
@@ -518,6 +598,11 @@ export default function App() {
           />
         </main>
       </div>
+      <CompareBar
+        selectedCount={selectedForComparison.length}
+        onOpen={() => setIsDrawerOpen(true)}
+        onClear={() => setSelectedForComparison([])}
+      />
       <ComparisonDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
@@ -639,7 +724,7 @@ git commit -m "docs: add README with demo guide and architecture overview"
 chore: scaffold vite + react 19 + typescript
 chore: setup tailwind v4, shadcn/ui, motion
 feat: add types and interfaces
-feat: add payment method mock data (10 methods)
+feat: add payment method mock data (11 methods)
 feat: add order context presets
 feat: implement usePaymentFilter hook
 feat: implement useRecommendations hook
