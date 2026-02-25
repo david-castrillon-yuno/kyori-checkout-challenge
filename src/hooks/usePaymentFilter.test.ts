@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { usePaymentFilter } from '@/hooks/usePaymentFilter'
 import { PAYMENT_METHODS } from '@/data/paymentMethods'
-import type { PaymentMethod, FilterState, Market } from '@/types'
+import type { PaymentMethod, FilterState } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Helpers
