@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
+import { SlidersHorizontal } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { PAYMENT_METHODS } from '@/data/paymentMethods'
 import { DEFAULT_ORDER_CONTEXT, ORDER_CONTEXT_PRESETS } from '@/data/orderContexts'
@@ -12,6 +13,12 @@ import { RecommendationBanner } from '@/components/RecommendationBanner'
 import { PaymentMethodGrid } from '@/components/PaymentMethodGrid'
 import { ComparisonDrawer } from '@/components/ComparisonDrawer'
 import { CompareBar } from '@/components/CompareBar'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 
 const DEFAULT_FILTER: FilterState = {
   speed: 'all',
@@ -25,6 +32,7 @@ export default function App() {
   const [orderContext, setOrderContext] = useState<OrderContext>(DEFAULT_ORDER_CONTEXT)
   const [selectedForComparison, setSelectedForComparison] = useState<string[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
 
   // usePaymentFilter returns { results: FilteredMethod[], total }
   const { results, total } = usePaymentFilter(PAYMENT_METHODS, filterState, orderContext.market)
@@ -70,6 +78,18 @@ export default function App() {
 
   const compatibleCount = results.filter(r => r.fitStatus === 'compatible').length
 
+  const hasActiveFilters =
+    filterState.speed !== 'all' ||
+    filterState.convenience !== 'all' ||
+    filterState.categories.length > 0 ||
+    filterState.searchQuery !== ''
+
+  const activeFilterCount =
+    (filterState.speed !== 'all' ? 1 : 0) +
+    (filterState.convenience !== 'all' ? 1 : 0) +
+    (filterState.categories.length > 0 ? 1 : 0) +
+    (filterState.searchQuery !== '' ? 1 : 0)
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Header market={orderContext.market} />
@@ -111,6 +131,38 @@ export default function App() {
           />
         </main>
       </div>
+
+      {/* Mobile filter button */}
+      <button
+        className="fixed bottom-20 right-4 z-40 lg:hidden flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-lg"
+        onClick={() => setIsMobileFilterOpen(true)}
+      >
+        <SlidersHorizontal className="h-4 w-4" /> Filters
+        {hasActiveFilters && (
+          <span className="ml-1 rounded-full bg-green-500 px-1.5 text-xs">
+            {activeFilterCount}
+          </span>
+        )}
+      </button>
+
+      {/* Mobile filter drawer */}
+      <Drawer open={isMobileFilterOpen} onOpenChange={setIsMobileFilterOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Filters</DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto p-4">
+            <FilterPanel
+              filterState={filterState}
+              onFilterChange={(newState) => {
+                setFilterState(newState)
+              }}
+              totalCount={total}
+              filteredCount={compatibleCount}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       <CompareBar
         selectedCount={selectedForComparison.length}

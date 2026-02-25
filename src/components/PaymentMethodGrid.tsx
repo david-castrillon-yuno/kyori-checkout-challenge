@@ -26,7 +26,7 @@ export function PaymentMethodGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {/* Compatible methods */}
-      <AnimatePresence>
+      <AnimatePresence mode="popLayout">
         {compatibleMethods.map((r) => (
           <motion.div
             key={r.method.id}
@@ -61,7 +61,7 @@ export function PaymentMethodGrid({
       )}
 
       {/* Incompatible methods */}
-      <AnimatePresence>
+      <AnimatePresence mode="popLayout">
         {incompatibleMethods.map((r) => (
           <motion.div
             key={r.method.id}

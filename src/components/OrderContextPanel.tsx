@@ -109,7 +109,7 @@ export function OrderContextPanel({
         </div>
 
         {/* Section 3: Order value slider */}
-        <div className="flex items-center gap-2 min-w-[200px] flex-1 max-w-xs">
+        <div className="flex items-center gap-2 w-full min-w-[200px] flex-1 md:max-w-xs">
           <span className="text-sm font-medium text-slate-700 shrink-0">Order value:</span>
           <Slider
             min={range.min}
@@ -126,14 +126,15 @@ export function OrderContextPanel({
 
         {/* Section 4: Preset buttons */}
         {presets.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-700">Presets:</span>
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <span className="text-sm font-medium text-slate-700 shrink-0">Presets:</span>
             <div className="flex gap-1.5">
               {presets.map((preset, index) => (
                 <Button
                   key={index}
                   variant="outline"
                   size="sm"
+                  className="shrink-0"
                   onClick={() => onOrderContextChange(preset)}
                 >
                   {preset.label ?? `${preset.market} ${preset.deliveryType}`}

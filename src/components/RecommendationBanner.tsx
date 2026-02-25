@@ -39,10 +39,10 @@ export function RecommendationBanner({ result }: RecommendationBannerProps) {
             {result.recommendations.map((rec) => (
               <div
                 key={rec.method.id}
-                className="bg-white border border-green-200 rounded-lg px-3 py-2"
+                className="min-w-0 bg-white border border-green-200 rounded-lg px-3 py-2"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-slate-900 text-sm">
+                  <span className="truncate max-w-[120px] font-medium text-slate-900 text-sm">
                     {rec.method.name}
                   </span>
                   <BadgeConfirmation

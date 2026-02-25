@@ -39,7 +39,7 @@ export function PaymentMethodCard({
 
   return (
     <motion.div
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={incompatibleReason ? 'opacity-60' : undefined}
     >
@@ -170,9 +170,11 @@ export function PaymentMethodCard({
                   Success rate:
                 </span>
                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-500 rounded-full"
-                    style={{ width: `${method.successRate * 100}%` }}
+                  <motion.div
+                    className="h-full rounded-full bg-green-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${method.successRate * 100}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
                   />
                 </div>
                 <span className="text-xs font-medium text-slate-700">
