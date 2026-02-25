@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
-import type { PaymentMethod, OrderContext, RecommendationResult, RecommendedMethod } from '@/types'
+import type { PaymentMethod, OrderContext, RecommendationResult, RecommendedMethod, Market, DeliveryType } from '@/types'
 
-const MARKET_NAMES: Record<string, string> = {
+const MARKET_NAMES: Record<Market, string> = {
   PH: 'the Philippines',
   TH: 'Thailand',
   ID: 'Indonesia',
 }
 
-const DELIVERY_LABELS: Record<string, string> = {
+const DELIVERY_LABELS: Record<DeliveryType, string> = {
   'same-day': 'same-day delivery',
   'express': 'express delivery',
   'standard': 'standard delivery',

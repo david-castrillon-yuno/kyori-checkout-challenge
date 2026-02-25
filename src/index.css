@@ -1,4 +1,10 @@
 @import "tailwindcss";
+
+@theme {
+  --color-kyori-green: #16a34a;
+  --color-kyori-light: #f0fdf4;
+}
+
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

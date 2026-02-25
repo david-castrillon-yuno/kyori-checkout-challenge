@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import type { PaymentMethod, FilterState, Market, FilteredMethod } from '@/types'
+import type { PaymentMethod, FilterState, Market, FilteredMethod, SpeedFilter } from '@/types'
 
-const SPEED_TO_MINUTES: Record<string, number> = {
+const SPEED_TO_MINUTES: Record<Exclude<SpeedFilter, 'all'>, number> = {
   instant: 0,
   'under-2hr': 120,
   'under-24hr': 1440,
@@ -70,8 +70,10 @@ export function usePaymentFilter(
     })
   }, [methods, filterState, market])
 
-  return {
-    results,
-    total: methods.filter(m => m.markets.includes(market)).length,
-  }
+  const total = useMemo(
+    () => methods.filter(m => m.markets.includes(market)).length,
+    [methods, market]
+  )
+
+  return { results, total }
 }

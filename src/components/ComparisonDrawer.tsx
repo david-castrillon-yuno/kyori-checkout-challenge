@@ -76,6 +76,7 @@ export function ComparisonDrawer({
   isOpen,
   onClose,
   methods,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   orderContext: _orderContext,
 }: ComparisonDrawerProps) {
   if (methods.length === 0) return null;

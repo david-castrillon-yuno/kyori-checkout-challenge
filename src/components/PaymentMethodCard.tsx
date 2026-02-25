@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronDown, ChevronUp, Check, Plus, AlertTriangle } from 'lucide-react';
 import {
@@ -34,7 +34,6 @@ export function PaymentMethodCard({
 }: PaymentMethodCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const Icon = getIcon(method.iconName);
   const showSameDayWarning =
     orderContext.deliveryType === 'same-day' && method.confirmationMinutes > 120;
 
@@ -49,7 +48,7 @@ export function PaymentMethodCard({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Icon className="w-6 h-6" style={{ color: method.brandColor }} />
+              {createElement(getIcon(method.iconName), { className: 'w-6 h-6', style: { color: method.brandColor } })}
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-900">
