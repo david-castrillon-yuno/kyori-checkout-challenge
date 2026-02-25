@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Toaster } from 'sonner'
 import { PAYMENT_METHODS } from '@/data/paymentMethods'
 import { DEFAULT_ORDER_CONTEXT, ORDER_CONTEXT_PRESETS } from '@/data/orderContexts'
@@ -42,13 +42,16 @@ export default function App() {
     [recommendations]
   )
 
-  // Clear comparison when market changes (derived state during render)
-  const prevMarketRef = useRef(orderContext.market)
-  if (prevMarketRef.current !== orderContext.market) {
-    prevMarketRef.current = orderContext.market
-    setSelectedForComparison([])
-    setIsDrawerOpen(false)
-  }
+  // Wrap setOrderContext to clear comparison when market changes
+  const handleOrderContextChange = useCallback((ctx: OrderContext) => {
+    setOrderContext(prev => {
+      if (prev.market !== ctx.market) {
+        setSelectedForComparison([])
+        setIsDrawerOpen(false)
+      }
+      return ctx
+    })
+  }, [])
 
   const toggleComparison = useCallback((id: string) => {
     setSelectedForComparison(prev =>
@@ -73,7 +76,7 @@ export default function App() {
 
       <OrderContextPanel
         orderContext={orderContext}
-        onOrderContextChange={setOrderContext}
+        onOrderContextChange={handleOrderContextChange}
         presets={ORDER_CONTEXT_PRESETS}
       />
 
