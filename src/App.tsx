@@ -1,3 +1,25 @@
+/**
+ * App — root component and single source of truth for all interactive state.
+ *
+ * State owned here:
+ *   filterState          — speed / convenience / categories / searchQuery
+ *   orderContext         — market, deliveryType, orderValue (drives recommendations)
+ *   selectedForComparison — up to 3 method IDs pinned for side-by-side comparison
+ *   isDrawerOpen         — ComparisonDrawer visibility
+ *   isMobileFilterOpen   — mobile filter Drawer visibility
+ *
+ * Data flow:
+ *   PAYMENT_METHODS → usePaymentFilter(filterState, market) → results + total
+ *   PAYMENT_METHODS → useRecommendations(orderContext)      → top-3 recommendations
+ *
+ * Key design notes:
+ *   - useRecommendations receives ALL PAYMENT_METHODS (not filtered results) so
+ *     recommendations stay stable regardless of active filters.
+ *   - handleOrderContextChange clears the comparison set when the market changes,
+ *     since selected methods from one market may not exist in another.
+ *   - toggleComparison caps selection at 3 (no toast — the Compare button is
+ *     hidden/disabled when the cap is reached via CompareBar guidance).
+ */
 import { useState, useCallback, useMemo } from 'react'
 import { SlidersHorizontal } from 'lucide-react'
 import { Toaster } from 'sonner'

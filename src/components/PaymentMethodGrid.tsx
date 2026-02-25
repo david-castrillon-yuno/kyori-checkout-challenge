@@ -1,3 +1,16 @@
+/**
+ * PaymentMethodGrid — renders compatible and incompatible methods in a two-section
+ * responsive grid with smooth layout animations.
+ *
+ * Layout:
+ *   - Compatible methods first (full opacity, sorted by popularityRank)
+ *   - A divider labeled "Other available methods" when both sections are non-empty
+ *   - Incompatible methods below (dimmed via PaymentMethodCard opacity-60)
+ *
+ * AnimatePresence + motion.div per card ensures cards animate in/out when filters
+ * change without the entire grid remounting. `mode="popLayout"` lets cards exit
+ * before siblings reflow, preventing visual jumps.
+ */
 import { motion, AnimatePresence } from 'motion/react';
 import { EmptyState } from '@/components/EmptyState';
 import { PaymentMethodCard } from '@/components/PaymentMethodCard';

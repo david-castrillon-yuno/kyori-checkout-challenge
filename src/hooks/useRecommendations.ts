@@ -1,3 +1,18 @@
+/**
+ * useRecommendations — scores every market-available method against the current
+ * order context and returns the top 3 as RecommendedMethod objects.
+ *
+ * Design decision: recommendations are computed from ALL payment methods, not
+ * the filtered subset, so they remain stable regardless of what the user has
+ * filtered out. The recommendation banner is meant to guide, not to mirror the
+ * filter state.
+ *
+ * Scoring is a rule-based heuristic (0-100, clamped) with four rules:
+ *   1. Delivery type fit      — how well the method's speed matches urgency
+ *   2. Success rate bonus     — deviation from the 80% baseline, scaled ×75
+ *   3. Popularity bonus       — up to +10 for top-ranked methods
+ *   4. Order value fit        — ±5/20 based on min/max amount compatibility
+ */
 import { useMemo } from 'react'
 import type { PaymentMethod, OrderContext, RecommendationResult, RecommendedMethod, Market, DeliveryType } from '@/types'
 

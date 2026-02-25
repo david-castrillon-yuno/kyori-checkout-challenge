@@ -1,6 +1,16 @@
+/**
+ * usePaymentFilter — filters payment methods against the current filter state.
+ *
+ * Design decision: instead of hiding non-matching methods, we mark them as
+ * 'incompatible' with a human-readable reason. The UI renders them dimmed at
+ * the bottom of the grid so customers understand why a method isn't ideal —
+ * not just that it disappeared. Search is the only true hard filter (removes
+ * entirely) because a customer typing a name expects exact matches.
+ */
 import { useMemo } from 'react'
 import type { PaymentMethod, FilterState, Market, FilteredMethod, SpeedFilter } from '@/types'
 
+// Maps SpeedFilter values to their maximum allowed confirmation time in minutes.
 const SPEED_TO_MINUTES: Record<Exclude<SpeedFilter, 'all'>, number> = {
   instant: 0,
   'under-2hr': 120,
@@ -20,11 +30,14 @@ export function usePaymentFilter(
   market: Market
 ): { results: FilteredMethod[]; total: number } {
   const results = useMemo(() => {
-    // Hard filter: only show methods available in selected market
+    // Step 1 — hard filter by market. Methods from other markets are never shown,
+    // even dimmed, because they're genuinely unavailable at checkout.
     const marketMethods = methods.filter(m => m.markets.includes(market))
 
+    // Step 2 — compute fitStatus per method. First failing check wins; the
+    // rest are not evaluated (a method can only have one primary reason).
     const scored: FilteredMethod[] = marketMethods.map(m => {
-      // Speed check
+      // Speed check — compare confirmationMinutes against the filter threshold
       if (filterState.speed !== 'all') {
         const max = SPEED_TO_MINUTES[filterState.speed]
         if (m.confirmationMinutes > max) {

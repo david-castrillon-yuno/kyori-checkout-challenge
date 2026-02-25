@@ -1,3 +1,17 @@
+/**
+ * PaymentMethodCard — renders a single payment method with collapsible details.
+ *
+ * Visual states:
+ *   - Compatible: full opacity, Compare button enabled
+ *   - Incompatible: opacity-60 (dimmed), amber warning banner, Compare disabled
+ *   - Recommended: green banner with the generated reason string
+ *   - Same-day warning: amber banner when confirmationMinutes > 120 and delivery
+ *     is same-day (independent of the incompatible state — a method can be
+ *     compatible with filters but still risky for same-day delivery)
+ *
+ * The expanded section (prerequisites, limitations, success rate bar, expiration
+ * window, amount range) is hidden by default to keep the grid scannable.
+ */
 import { createElement, useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronDown, ChevronUp, Check, Plus, AlertTriangle } from 'lucide-react';
