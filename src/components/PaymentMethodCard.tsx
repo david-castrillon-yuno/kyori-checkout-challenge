@@ -51,6 +51,9 @@ export function PaymentMethodCard({
   const showSameDayWarning =
     orderContext.deliveryType === 'same-day' && method.confirmationMinutes > 120;
 
+  const showLimitWarning =
+    method.currency !== 'MULTI' && orderContext.orderValue > method.maxAmount;
+
   return (
     <motion.div
       whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
@@ -99,6 +102,14 @@ export function PaymentMethodCard({
             <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               May not confirm before delivery
+            </div>
+          )}
+
+          {/* Order value exceeds method limit */}
+          {showLimitWarning && (
+            <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              Your order exceeds this method's max of {formatAmount(method.maxAmount, method.currency)}
             </div>
           )}
 

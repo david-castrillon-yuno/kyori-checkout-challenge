@@ -2,14 +2,23 @@
 
 An interactive checkout payment advisor for Kyori Grocery, helping customers across Indonesia, Thailand, and the Philippines choose the best payment option for their order.
 
+**Challenge URL:** https://yuno-challenge.vercel.app/challenge/cmm2f4ert0004sptu87unheu6
+
 ## Getting Started
 
 ```bash
 npm install
-npm run dev
+npm run dev       # http://localhost:5173
 ```
 
-Opens at http://localhost:5173
+Other commands:
+
+```bash
+npm run build     # Production build
+npm run lint      # ESLint
+npm test          # Vitest (watch mode)
+npm run coverage  # Test coverage report
+```
 
 ## Tech Stack
 
